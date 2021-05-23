@@ -51,3 +51,4 @@ def findfeed(site):
     #             result.append(url)
     # return result
 findfeed('https://thanhnien.vn/rss.html')
+# findfeed('https://tuoitre.vn/rss.htm')
