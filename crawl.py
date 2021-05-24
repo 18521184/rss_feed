@@ -4,7 +4,7 @@ import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup
 
-from preprocessing import is_relevant, cleanhtml, find_feeds
+from preprocessing import is_relevant, cleanhtml, find_feeds, normalize
 
 # 
 def get_content(url):
@@ -31,29 +31,35 @@ def get_content(url):
         # Thus, we need to get rid of those by extracting p tag only
         # because p tag contains merely paragraph of the content that we need.
         content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+
     elif 'vnexpress' in url:
         pass
     elif 'thanhnien.vn' in url:
-        raw = soup.findAll("div", {"id": "abody"})[0]
-        divs = raw.findAll("div", attrs={"class": None, "id": None, "style": None})
-        
+        try:
+            raw = soup.findAll("div", {"id": "abody"})[0]
+            divs = raw.findAll("div", attrs={"class": None, "id": None, "style": None})
+        except Exception as err:
+            print(url)
+            return content
+            
         new_divs = []
-        # Filter out image, video, and tables (redundant)
-        fil = r'<(table).*?</\\1>(?s)'
         for div in divs:
-            if not re.match(fil, str()):
-                new_divs.append(div)
+            s = str(div)
+            if '<table ' not in s and 'Ảnh: ' not in s:
+                new_divs.append(cleanhtml(s))
 
-        content = ''.join([cleanhtml(str(div)) for div in new_divs])
-        
+        content = ''.join(new_divs)
+
     elif 'nld.com.vn' in url:
         pass
     elif 'vietnamnet.vn' in url:
         pass
 
+    content = normalize(content)
+
     return content
 
-def crawl_tuoitre():
+def crawl():
     # # Aggregate all RSS feeds URL from RSS aggregator site
     # rss_aggr_urls = [
     #     'https://tuoitre.vn/rss.htm',
@@ -128,9 +134,9 @@ def crawl_tuoitre():
     
     return return_data
 
-def crawl():
+def get_data():
     data = []
-    data.append(crawl_tuoitre())
+    data.append(crawl())
 
     f = open('crawl_central.txt', 'w+')
     f.write(json.dumps(data, indent=4, ensure_ascii=False))
@@ -138,13 +144,7 @@ def crawl():
 
     print(len(data[0]['feeds'])*len(data[0]['feeds'][0]['articles']))
     
-
-    # crawl_vnexpress()
-    # crawl_dantri()
-    # crawl_vietnamnet()
-    # crawl_thanhnien()
-    
-crawl()
+get_data()
 
 
 # Key extracting
