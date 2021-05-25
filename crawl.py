@@ -1,3 +1,4 @@
+from calendar import c
 import re, json, feedparser
 
 import urllib.parse
@@ -51,12 +52,33 @@ def get_content(url):
         content = ''.join(new_divs)
 
     elif 'nld.com.vn' in url:
-        pass
+        try:
+            raw = soup.findAll("div", {"class": "content-news-detail old-news"})[0]
+        except Exception as err:
+            print(url)
+            return content
+        content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
     elif 'vietnamnet.vn' in url:
-        pass
+        try:
+            raw = soup.findAll("div", {"class": "ArticleContent"})[0]
+        except Exception as err:
+            try:
+                raw = soup.findAll("div", {"class": "Magazine-Acticle EMA2018"})[0]
+            except Exception as err:
+                print(url)
+                return content
+            # return content
+        #content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+        paras = raw.findAll("p", attrs={"class": None, "style": None})
+        if (len(paras)==0):
+            paras = raw.findAll("p", attrs={"class": "t-j", "style": None})
+        new_paras = []
+        for i in range(len(paras)-1):
+            new_paras.append(cleanhtml(str(paras[i])))
+        content = ' '.join(new_paras)
+            # content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": "t-j", "style": None})])
 
     content = normalize(content)
-
     return content
 
 def crawl():
@@ -69,7 +91,7 @@ def crawl():
     #     'https://nld.com.vn/rss.htm'
     # ]
     rss_aggr_urls = [
-        'https://tuoitre.vn/rss.htm'
+        'https://vietnamnet.vn/vn/rss/'
     ]
     # List of sites to be ignored due to not containing usable information
     blacklist = [
@@ -78,7 +100,6 @@ def crawl():
 
     for site in rss_aggr_urls:
         feeds_url = find_feeds(site)
-
         return_data = {
             "site": site,
             "feeds": []
@@ -89,7 +110,6 @@ def crawl():
             # Check if the url is in blacklist
             if url in blacklist:
                 continue
-
             data = {
                 "rss_url": url,
                 "articles": []
@@ -97,7 +117,6 @@ def crawl():
 
             # Test with particular RSS feed
             feed = feedparser.parse(url)
-
             for i in range(len(feed.entries)):
                 # Get a sample article URL
                 # Also its title
@@ -111,9 +130,10 @@ def crawl():
                 # Also check if the article is relevant to COVID-19
                 # If we use summary and title, it would be faster and less resource consumption
                 # Nonetheless, the summary is not very reliable.
-                if len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False:
-                    # If none match, continue to another aritcle
-                    continue
+
+                # if len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False:
+                #     # If none match, continue to another aritcle
+                #     continue
 
                 # # Get content's header (somehow as similar as summary)
                 # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
@@ -122,15 +142,16 @@ def crawl():
 
                 data['articles'].append({
                     "id": feed.entries[i].id,
-                    "summary": summary,
                     "title": title,
-                    "content": content,
-                    "url": url,
-                    "publish_date": feed.entries[i].published
+                    # "summary": summary,
+                    "content": content
+                    # "url": url,
+                    # "publish_date": feed.entries[i].published
                 })
 
             return_data['feeds'].append(data)
-            break
+            if len(data) !=0:
+                break
     
     return return_data
 
@@ -138,14 +159,18 @@ def get_data():
     data = []
     data.append(crawl())
 
-    f = open('crawl_central.txt', 'w+')
-    f.write(json.dumps(data, indent=4, ensure_ascii=False))
-    f.close()
+    # f = open('crawl_central.txt', 'w+')
+    # f.write(json.dumps(data, indent=4, ensure_ascii=False))
+    # f.close()
 
-    print(len(data[0]['feeds'])*len(data[0]['feeds'][0]['articles']))
+    # print(len(data[0]['feeds'])*len(data[0]['feeds'][0]['articles']))
+
+    # for post in data:
+    #     print(post)
     
-get_data()
-
+# get_data()
+# print(get_content('https://vietnamnet.vn/vn/thoi-su/thu-tuong-pham-minh-chinh-tiep-tuc-doi-moi-dong-bo-toan-dien-cong-tac-xay-dung-phap-luat-739949.html'))
+print(get_content('https://vietnamnet.vn/vn/tuanvietnam/media/buoc-cong-ty-duoc-chia-se-sang-che-vac-xin-covid-19-y-tuong-xa-voi-734389.html'))
 
 # Key extracting
 ## source
