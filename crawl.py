@@ -16,44 +16,46 @@ def get_content(url):
     soup = BeautifulSoup(page, "lxml")
     content = ''
 
-    if 'tuoitre.vn' in url:
-        # We get the first element in the array because we are sure that 
-        # any article on tuoitre.vn only has one div tag with classname "main-content-body"
-        # Note that findAll or find_all always return a list 
-        try:
+    try:
+        if 'tuoitre.vn' in url:
+            # We get the first element in the array because we are sure that 
+            # any article on tuoitre.vn only has one div tag with classname "main-content-body"
+            # Note that findAll or find_all always return a list 
             raw = soup.findAll("div", {"class": "main-content-body"})[0]
-        except Exception as err:
-            print(url)
-            return content
 
-        # Nonetheless, raw main content body still have some noise
-        # such as div tag used for images or suggesting a related article.
-        # Thus, we need to get rid of those by extracting p tag only
-        # because p tag contains merely paragraph of the content that we need.
-        content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
 
-    elif 'vnexpress' in url:
-        pass
-    elif 'thanhnien.vn' in url:
-        try:
+            # Nonetheless, raw main content body still have some noise
+            # such as div tag used for images or suggesting a related article.
+            # Thus, we need to get rid of those by extracting p tag only
+            # because p tag contains merely paragraph of the content that we need.
+            content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+
+        elif 'vnexpress' in url:
+            raw = soup.find_all('article', attrs={"class": "fck_detail"})[0]
+            paras = raw.find_all('p', attrs={'class': "Normal", 'style': None, 'id': None})
+
+            content = normalize(' '.join([cleanhtml(str(p)) for p in paras]))
+
+        elif 'thanhnien.vn' in url:
             raw = soup.findAll("div", {"id": "abody"})[0]
             divs = raw.findAll("div", attrs={"class": None, "id": None, "style": None})
-        except Exception as err:
-            print(url)
-            return content
-            
-        new_divs = []
-        for div in divs:
-            s = str(div)
-            if '<table ' not in s and 'Ảnh: ' not in s:
-                new_divs.append(cleanhtml(s))
+                
+            new_divs = []
+            for div in divs:
+                s = str(div)
+                if '<table ' not in s and 'Ảnh: ' not in s:
+                    new_divs.append(cleanhtml(s))
 
-        content = ''.join(new_divs)
+            content = ''.join(new_divs)
 
-    elif 'nld.com.vn' in url:
-        pass
-    elif 'vietnamnet.vn' in url:
-        pass
+        elif 'nld.com.vn' in url:
+            pass
+        elif 'vietnamnet.vn' in url:
+            pass
+    except Exception as err:
+        print('Error at:',url)
+        print('Error details:', err)
+        return content
 
     content = normalize(content)
 
@@ -129,8 +131,8 @@ def crawl():
                     "publish_date": feed.entries[i].published
                 })
 
-            return_data['feeds'].append(data)
-            break
+            if len(data.articles) > 0:
+                return_data['feeds'].append(data)
     
     return return_data
 

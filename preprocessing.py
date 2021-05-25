@@ -31,12 +31,21 @@ def is_relevant(text):
 # Ref: https://stackoverflow.com/questions/16467479/normalizing-unicode
 # output: text after unicode, normalizing 
 def normalize(text):
-    text = text.lower()
+    # text = text.lower()
     text = unicodedata.normalize('NFKC', text)
     text = text.replace('\n', ' ')
 
     return text
 
+# Remove duplicates and validate RSS feed URL from find_feeds
+def validate_feeds(feeds, url):
+    results = set()
+    for feed in feeds:
+        if feed != url and len(url) < len(feed):
+            results.add(feed)
+    return list(results)
+
+# Get all RSS feed URL from RSS aggregator site
 def find_feeds(url):
     feeds = []
 
@@ -56,19 +65,20 @@ def find_feeds(url):
                     href = f.get("href",None)
                     if href:
                         feeds.append(href)
-    
+
     # ...
     parsed_url = urllib.parse.urlparse(url)
     base = parsed_url.scheme + "://" + parsed_url.hostname
     atags = html.findAll("a")
     for a in atags:
         href = a.get("href",None)
-        if href:
-            
+        if href:   
             if ("xml" in href or "rss" in href or "feed" in href):
                 if ("https" in href or "http" in href):
                     feeds.append(href)
                 else:    
                     feeds.append(base+href)
+
+    feeds = validate_feeds(feeds, url)
 
     return feeds
