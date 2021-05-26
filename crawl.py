@@ -21,20 +21,25 @@ def get_content(url):
             # We get the first element in the array because we are sure that 
             # any article on tuoitre.vn only has one div tag with classname "main-content-body"
             # Note that findAll or find_all always return a list 
-            raw = soup.findAll("div", {"class": "main-content-body"})[0]
-
+            raw = soup.findAll("div", {"id": "main-detail-body"})[0]
 
             # Nonetheless, raw main content body still have some noise
             # such as div tag used for images or suggesting a related article.
             # Thus, we need to get rid of those by extracting p tag only
             # because p tag contains merely paragraph of the content that we need.
-            content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+            # paras = raw.findAll("p", attrs={"class": None, "style": None})
+            paras = raw.findChildren("p", attrs={"style": None}, recursive=False)
+            
+            # if len(paras) == 0:
+            #     paras = raw.findAll("p", attrs)
+            
+            content = ''.join([cleanhtml(str(p)) for p in paras])
 
         elif 'vnexpress' in url:
             raw = soup.find_all('article', attrs={"class": "fck_detail"})[0]
             paras = raw.find_all('p', attrs={'class': "Normal", 'style': None, 'id': None})
 
-            content = normalize(' '.join([cleanhtml(str(p)) for p in paras]))
+            content = ' '.join([cleanhtml(str(p)) for p in paras])
 
         elif 'thanhnien.vn' in url:
             raw = soup.findAll("div", {"id": "abody"})[0]
@@ -61,92 +66,148 @@ def get_content(url):
 
     return content
 
-def crawl():
-    # # Aggregate all RSS feeds URL from RSS aggregator site
-    # rss_aggr_urls = [
-    #     'https://tuoitre.vn/rss.htm',
-    #     'https://vnexpress.net/rss',
-    #     'https://thanhnien.vn/rss.html',
-    #     'http://vietnamnet.vn/vn/rss/',
-    #     'https://nld.com.vn/rss.htm'
-    # ]
-    rss_aggr_urls = [
-        'https://tuoitre.vn/rss.htm'
-    ]
-    # List of sites to be ignored due to not containing usable information
-    blacklist = [
-        'thanhnien.vn/video/',
-    ]
+def crawl(url):
+    data = {
+        "rss_url": url,
+        "articles": []
+    }
 
-    for site in rss_aggr_urls:
-        feeds_url = find_feeds(site)
+    # Test with particular RSS feed
+    feed = feedparser.parse(url)
 
-        return_data = {
-            "site": site,
-            "feeds": []
-        }
-        data = None
+    for i in range(len(feed.entries)):
+        # Get a sample article URL
+        # Also its title
+        url = feed.entries[i].links[0]['href']
+        title = feed.entries[i].title
+        summary = cleanhtml(feed.entries[i].summary)  
 
-        for url in feeds_url:
-            # Check if the url is in blacklist
-            if url in blacklist:
-                continue
+        content = get_content(url)
 
-            data = {
-                "rss_url": url,
-                "articles": []
-            }
+        # Check if the content is attainable
+        # Also check if the article is relevant to COVID-19
+        # If we use summary and title, it would be faster and less resource consumption
+        # Nonetheless, the summary is not very reliable.
+        if len(content) == 0 or (len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False):
+            # If none match, continue to another aritcle
+            continue
 
-            # Test with particular RSS feed
-            feed = feedparser.parse(url)
+        # # Get content's header (somehow as similar as summary)
+        # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
+        # # summary field is also content header
+        # content_header = cleanhtml(str(raw_content.findAll("h2", {"class": "sapo"})[0]))
 
-            for i in range(len(feed.entries)):
-                # Get a sample article URL
-                # Also its title
-                url = feed.entries[i].links[0]['href']
-                title = feed.entries[i].title
-                summary = cleanhtml(feed.entries[i].summary)  
+        data['articles'].append({
+            "id": feed.entries[i].id,
+            "summary": summary,
+            "title": title,
+            "content": content,
+            "url": url,
+            "publish_date": feed.entries[i].published
+        })
 
-                content = get_content(url)
-
-                # Check if the content is attainable
-                # Also check if the article is relevant to COVID-19
-                # If we use summary and title, it would be faster and less resource consumption
-                # Nonetheless, the summary is not very reliable.
-                if len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False:
-                    # If none match, continue to another aritcle
-                    continue
-
-                # # Get content's header (somehow as similar as summary)
-                # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
-                # # summary field is also content header
-                # content_header = cleanhtml(str(raw_content.findAll("h2", {"class": "sapo"})[0]))
-
-                data['articles'].append({
-                    "id": feed.entries[i].id,
-                    "summary": summary,
-                    "title": title,
-                    "content": content,
-                    "url": url,
-                    "publish_date": feed.entries[i].published
-                })
-
-            if len(data.articles) > 0:
-                return_data['feeds'].append(data)
-    
-    return return_data
+    if len(data['articles']) > 0:
+        return data
+    else:
+        return None
 
 def get_data():
-    data = []
-    data.append(crawl())
-
-    f = open('crawl_central.txt', 'w+')
-    f.write(json.dumps(data, indent=4, ensure_ascii=False))
-    f.close()
-
-    print(len(data[0]['feeds'])*len(data[0]['feeds'][0]['articles']))
+    feeds_url = None
+    # Import list of RSS feeds 
+    with open('feeds_url.txt', 'r') as f:
+        feeds_url = f.read().split('\n')
     
-get_data()
+    # cnt = 0
+    data = None
+    with open('crawl_results.csv', 'a+') as f:
+        f.write('\n')
+        for i in range(len(feeds_url)):
+            data = crawl(feeds_url[i])
+            if data:
+                # Count number of articles in this RSS feed
+                n_articles = len(data['articles'])
+                
+                # Convert and import articles as CSV entries into CSV file 
+                for j in range(n_articles):
+                    entry = ','.join([
+                        data['articles'][j]['id'],
+                        data['articles'][j]['summary'],
+                        data['articles'][j]['title'],
+                        data['articles'][j]['content'],
+                        data['articles'][j]['url'],         # Article URL
+                        feeds_url[i],                       # RSS feed URL
+                        data['articles'][j]['publish_date']
+                    ])
+
+                    if j != n_articles - 1:
+                        entry = entry + '\n'
+
+                    f.write(entry)
+    
+                print('Successfully craw {} articles from {}'.format(n_articles, feeds_url[i]))
+
+            # if cnt == 3:
+            #     break
+            # else:
+            #     cnt += 1
+
+
+
+def export_feeds_url():
+    # List of sites to be ignored due to not containing usable information
+    blacklist = [
+        'video'
+    ]
+    # Aggregate all RSS feeds URL from RSS aggregator site
+    rss_aggr_urls = [
+        'https://tuoitre.vn/rss.htm',
+        'https://vnexpress.net/rss',
+        'https://thanhnien.vn/rss.html',
+        'http://vietnamnet.vn/vn/rss/',
+        'https://nld.com.vn/rss.htm'
+    ]
+    with open('feeds_url.txt', 'a+') as f:
+        for url in rss_aggr_urls:
+            feeds_url = find_feeds(url)
+            new_feeds_url = []
+
+            n_feeds = len(feeds_url)
+            # Validate each RSS feed uRL
+            for i in range(n_feeds):
+                flag = True
+                # Check if URL containing word in blacklist
+                for word in blacklist:
+                    if word in feeds_url[i]:
+                        flag = False
+                        break 
+                if flag:
+                    if i != n_feeds-1:
+                        new_feeds_url.append(feeds_url[i] + '\n')
+                    else:
+                        new_feeds_url.append(feeds_url[i])
+
+            f.writelines(new_feeds_url)
+
+def initialize():
+    # Create a results file with headers
+    data_headers = [
+        "id",
+        "summary",
+        "title",
+        "content",
+        "article_url",
+        "feed_url",
+        "publish_date"
+    ]
+    with open('crawl_results.csv', 'a+') as f:
+        f.write(','.join(data_headers))
+    
+    # Export RSS feeds' URL to file
+    export_feeds_url()
+
+if __name__ == '__main__':
+    # initialize()
+    get_data()
 
 
 # Key extracting
@@ -176,4 +237,13 @@ get_data()
 #         }
 #     ]
 # }]
- 
+
+# Structure of an article
+# "rss_url": "",
+# "articles": [{
+#     "id": "",
+#     "summary": "",
+#     "title": "",
+#     "content": "",
+#     "url": "",
+#     "publish_date": "",
