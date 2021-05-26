@@ -63,7 +63,7 @@ def get_content(url):
             raw = soup.findAll("div", {"class": "ArticleContent"})[0]
         except Exception as err:
             try:
-                raw = soup.findAll("div", {"class": "Magazine-Acticle EMA2018"})[0]
+                raw = soup.findAll("div", {"class": "Magazine-Acticle"})[0]
             except Exception as err:
                 print(url)
                 return content
@@ -74,6 +74,8 @@ def get_content(url):
             paras = raw.findAll("p", attrs={"class": "t-j", "style": None})
         new_paras = []
         for i in range(len(paras)-1):
+            if len(paras[i].findAll("iframe")) >0:
+                continue
             new_paras.append(cleanhtml(str(paras[i])))
         content = ' '.join(new_paras)
             # content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": "t-j", "style": None})])
@@ -170,7 +172,7 @@ def get_data():
     
 # get_data()
 # print(get_content('https://vietnamnet.vn/vn/thoi-su/thu-tuong-pham-minh-chinh-tiep-tuc-doi-moi-dong-bo-toan-dien-cong-tac-xay-dung-phap-luat-739949.html'))
-print(get_content('https://vietnamnet.vn/vn/tuanvietnam/media/buoc-cong-ty-duoc-chia-se-sang-che-vac-xin-covid-19-y-tuong-xa-voi-734389.html'))
+# print(get_content('https://vietnamnet.vn/vn/giai-tri/nhac/khac-hung-ghen-co-vy-li-lom-khong-sen-sua-hay-khoc-nhu-khac-viet-630053.html'))
 
 # Key extracting
 ## source
