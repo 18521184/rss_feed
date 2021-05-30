@@ -1,0 +1,23 @@
+# For page aggregating RSS sites
+feed.feed
+
+# For particular RSS site 
+feed.entries
+
+# Get article href
+feed.entries[0].links[0]['href']
+
+# Referring
+mysql> describe covid19;
++---------+----------+------+-----+---------+-------+
+| Field   | Type     | Null | Key | Default | Extra |
++---------+----------+------+-----+---------+-------+
+| id      | int      | NO   | PRI | NULL    |       |
+| title   | text     | YES  |     | NULL    |       |
+| content | longtext | YES  |     | NULL    |       |
++---------+----------+------+-----+---------+-------+
+
+#
+create table articles(id varchar(32) not null, summary text, title text, content longtext, feed_url text, url text, publish_date varchar(50)) character set utf8mb4 collate utf8mb4_general_ci;
+create user 'mysql_longnguyen'@'%' identified by 'mysql_longnguyen';
+grant all privileges on covid19.* to 'mysql_longnguyen'@'%';
