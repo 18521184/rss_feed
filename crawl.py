@@ -1,9 +1,13 @@
 import re, json, feedparser
-
 import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup
+from hashlib import md5
 
+import os.path
+from os import path
+
+from dbconnector import establish, add
 from preprocessing import is_relevant, cleanhtml, find_feeds, normalize
 
 # 
@@ -29,10 +33,7 @@ def get_content(url):
             # because p tag contains merely paragraph of the content that we need.
             # paras = raw.findAll("p", attrs={"class": None, "style": None})
             paras = raw.findChildren("p", attrs={"style": None}, recursive=False)
-            
-            # if len(paras) == 0:
-            #     paras = raw.findAll("p", attrs)
-            
+
             content = ''.join([cleanhtml(str(p)) for p in paras])
 
         elif 'vnexpress' in url:
@@ -54,17 +55,43 @@ def get_content(url):
             content = ''.join(new_divs)
 
         elif 'nld.com.vn' in url:
-            pass
+            raw = soup.findAll("div", {"class": "content-news-detail old-news"})[0]
+            content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+            
         elif 'vietnamnet.vn' in url:
-            pass
+            raw_list = soup.findAll("div", {"id": "ArticleContent"})
+            if len(raw_list) <= 0:
+                raw_list = soup.findAll("div", {"id": "Magazine-Acticle"})[0]
+
+            raw = raw_list[0]
+            paras = raw.findAll("p", attrs={"class": None, "style": None})
+            if (len(paras) == 0):
+                paras = raw.findAll("p", attrs={"class": "t-j", "style": None})
+            
+            new_paras = []
+            for i in range(len(paras)-1):
+                if len(paras[i].findAll("iframe")) >0:
+                    continue
+                new_paras.append(cleanhtml(str(paras[i])))
+            content = ' '.join(new_paras)
+
     except Exception as err:
         print('Error at:',url)
         print('Error details:', err)
+        write_log(url, err)
         return content
 
     content = normalize(content)
 
     return content
+
+def write_log(url, err):
+    with open('debug.txt', 'a+') as f:
+        f.write(str(url) + '\n' + str(err) + '\n')
+
+# Get unicity by MD5 hash
+def get_id(url):
+    return md5(str(url).encode()).hexdigest()
 
 def crawl(url):
     data = {
@@ -97,13 +124,17 @@ def crawl(url):
         # # summary field is also content header
         # content_header = cleanhtml(str(raw_content.findAll("h2", {"class": "sapo"})[0]))
 
+        # Get id and date of the article
+        id = get_id(url)
+        date = feed.entries[i].published
+
         data['articles'].append({
-            "id": feed.entries[i].id,
+            "id": id,
             "summary": summary,
             "title": title,
             "content": content,
             "url": url,
-            "publish_date": feed.entries[i].published
+            "publish_date": date
         })
 
     if len(data['articles']) > 0:
@@ -111,7 +142,7 @@ def crawl(url):
     else:
         return None
 
-def get_data():
+def get_data_to_csv():
     feeds_url = None
     # Import list of RSS feeds 
     with open('feeds_url.txt', 'r') as f:
@@ -143,17 +174,28 @@ def get_data():
                         entry = entry + '\n'
 
                     f.write(entry)
+                    
+                print('Successfully crawl {} articles from {}'.format(n_articles, feeds_url[i]))
+
+# MySQL included
+def get_data_to_db():
+    db = establish()
+
+    feeds_url = None
+    # Import list of RSS feeds 
+    with open('feeds_url.txt', 'r') as f:
+        feeds_url = f.read().split('\n')
     
-                print('Successfully craw {} articles from {}'.format(n_articles, feeds_url[i]))
+    data = None
+    for i in range(len(feeds_url)):
+        data = crawl(feeds_url[i])
+        if data:
+            # Count number of articles in this RSS feed
+            n_articles = len(data['articles'])
+            add(db, data, feeds_url[i])        
+            print('Successfully added {} articles from {} to database'.format(n_articles, feeds_url[i]))
 
-            # if cnt == 3:
-            #     break
-            # else:
-            #     cnt += 1
-
-
-
-def export_feeds_url():
+def get_feeds_url():
     # List of sites to be ignored due to not containing usable information
     blacklist = [
         'video'
@@ -189,25 +231,28 @@ def export_feeds_url():
             f.writelines(new_feeds_url)
 
 def initialize():
-    # Create a results file with headers
-    data_headers = [
-        "id",
-        "summary",
-        "title",
-        "content",
-        "article_url",
-        "feed_url",
-        "publish_date"
-    ]
-    with open('crawl_results.csv', 'a+') as f:
-        f.write(','.join(data_headers))
+    if not path.exists("crawl_results.csv"):
+        # Create a results file with headers
+        data_headers = [
+            "id",
+            "summary",
+            "title",
+            "content",
+            "article_url",
+            "feed_url",
+            "publish_date"
+        ]
+        with open('crawl_results.csv', 'a+') as f:
+            f.write(','.join(data_headers))
     
-    # Export RSS feeds' URL to file
-    export_feeds_url()
+    if not path.exists("feeds_url.txt"):
+        # Export RSS feeds' URL to file
+        get_feeds_url()
 
 if __name__ == '__main__':
-    # initialize()
-    get_data()
+    initialize()
+    # get_data_to_csv()
+    get_data_to_db()
 
 
 # Key extracting
