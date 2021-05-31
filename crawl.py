@@ -7,7 +7,7 @@ from hashlib import md5
 import os.path
 from os import path
 
-from dbconnector import establish, add
+from dbconnector import add
 from preprocessing import is_relevant, cleanhtml, find_feeds, normalize
 
 # 
@@ -178,9 +178,7 @@ def get_data_to_csv():
                 print('Successfully crawl {} articles from {}'.format(n_articles, feeds_url[i]))
 
 # MySQL included
-def get_data_to_db():
-    db = establish()
-
+def get_data_to_db(db):
     feeds_url = None
     # Import list of RSS feeds 
     with open('feeds_url.txt', 'r') as f:

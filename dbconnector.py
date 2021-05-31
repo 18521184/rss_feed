@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-def establish():
+def get_db_session():
     # specify database configurations
     config = {
         'host': 'localhost',
@@ -39,7 +39,7 @@ def add(db, data, feed_url):
         url = data['articles'][j]['url'],         # Article URL
         publish_date = data['articles'][j]['publish_date']
 
-        check = db.execute("SELECT * FROM articles WHERE id = :id",
+        check = db.execute("SELECT id FROM articles WHERE id = :id",
                 {"id": id}).fetchone()
         try:        
             # If the article haven't existed

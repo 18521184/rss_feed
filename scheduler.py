@@ -3,14 +3,15 @@ import time
 from datetime import datetime
 
 from crawl import initialize, get_data_to_db
+from dbconnector import get_db_session
 
-def call_crawler():
+def call_crawler(db):
     print("Crawler called at:", datetime.now())
-    get_data_to_db()
+    get_data_to_db(db)
 
-def scheduling():
+def scheduling(db):
     # loop every 2 hours
-    schedule.every(2).hours.do(call_crawler)
+    schedule.every(2).hours.do(lambda: call_crawler(db))
 
     while 1:
         schedule.run_pending()
@@ -18,4 +19,5 @@ def scheduling():
 
 if __name__ == '__main__':
     initialize()
-    scheduling()
+    db = get_db_session()
+    scheduling(db)
