@@ -10,7 +10,7 @@ def call_crawler():
 
 def scheduling():
     # loop every 2 hours
-    schedule.every(2).hour.do(get_data_to_db)
+    schedule.every(2).hours.do(call_crawler)
 
     while 1:
         schedule.run_pending()
