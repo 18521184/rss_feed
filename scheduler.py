@@ -5,7 +5,7 @@ from datetime import datetime
 from crawl import initialize, get_data_to_db
 
 def call_crawler():
-    print("Crawler called at:", datetime.datetime.now())
+    print("Crawler called at:", datetime.now())
     get_data_to_db()
 
 def scheduling():
