@@ -17,8 +17,9 @@ mysql> describe covid19;
 | content | longtext | YES  |     | NULL    |       |
 +---------+----------+------+-----+---------+-------+
 
-#
+# MySQL database initialize 
 create database corpus;
+use corpus;
 create table articles(id int not null auto_increment, hash varchar(32) not null, summary text, title text, content longtext, feed_url text, url text, publish_date varchar(50), primary key(id)) character set utf8mb4 collate utf8mb4_general_ci;
 create user 'mysql_longnguyen'@'%' identified by 'mysql_longnguyen';
 grant all privileges on corpus.* to 'mysql_longnguyen'@'%';
