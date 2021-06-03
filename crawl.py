@@ -89,7 +89,7 @@ def write_log(url, err):
 
 # Get unicity by MD5 hash
 def get_digest(url):
-    return md5(str(url).encode()).hexdigest()
+    return str(md5(str(url).encode()).hexdigest())
 
 def crawl(url):
     data = {

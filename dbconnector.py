@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-def create_db_engine():
+def create_connector():
     # specify database configurations
     config = {
         'host': 'localhost',
@@ -21,12 +21,9 @@ def create_db_engine():
 
     # connect to database
     engine = create_engine(connection_str)
+    db = scoped_session(sessionmaker(bind=engine))
 
-    return engine
-
-# Close session of SQLAlchemy
-def close_session(db):
-    db.close
+    return db
 
 def add(db, data, feed_url):
     # Count number of articles in this RSS feed
