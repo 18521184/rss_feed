@@ -1,14 +1,14 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-def get_db_session():
+def create_db_engine():
     # specify database configurations
     config = {
         'host': 'localhost',
         'port': 3306,
         'user': 'mysql_longnguyen',
         'password': 'mysql_longnguyen',
-        'database': 'covid19'
+        'database': 'corpus'
     }
     db_user = config.get('user')
     db_pwd = config.get('password')
@@ -21,33 +21,36 @@ def get_db_session():
 
     # connect to database
     engine = create_engine(connection_str)
-    # connection = engine.connect()
-    db = scoped_session(sessionmaker(bind=engine))
 
-    return db
+    return engine
+
+# Close session of SQLAlchemy
+def close_session(db):
+    db.close
 
 def add(db, data, feed_url):
     # Count number of articles in this RSS feed
     n_articles = len(data['articles'])
     
+    count = 0
     # Convert and import articles as CSV entries into CSV file 
     for j in range(n_articles):
-        id = data['articles'][j]['id']
+        hash = data['articles'][j]['hash']
         summary = data['articles'][j]['summary']
         title = data['articles'][j]['title'],
         content = data['articles'][j]['content'],
         url = data['articles'][j]['url'],         # Article URL
         publish_date = data['articles'][j]['publish_date']
 
-        check = db.execute("SELECT id FROM articles WHERE id = :id",
-                {"id": id}).fetchone()
+        check = db.execute("SELECT hash FROM articles WHERE hash = :hash",
+                {"hash": hash}).fetchone()
         try:        
             # If the article haven't existed
             if not check:
                 db.execute(
-                    "INSERT INTO articles (id, summary, title, content, feed_url, url, publish_date) VALUES (:id, :summary, :title, :content, :feed_url, :url, :publish_date)",
+                    "INSERT INTO articles (hash, summary, title, content, feed_url, url, publish_date) VALUES (:hash, :summary, :title, :content, :feed_url, :url, :publish_date)",
                     {
-                        "id": id,
+                        "hash": hash,
                         "summary": str(summary),
                         "title": title,
                         "content": content,
@@ -56,8 +59,9 @@ def add(db, data, feed_url):
                         "publish_date": publish_date
                     }
                 )
+                count += 1
         except Exception as err:
-            print(data['articles'][j]['summary'])
             print(err)
     
     db.commit()
+    print("[+] Added: {} articles".format(count))
