@@ -1,10 +1,10 @@
-import re, json, feedparser
+import re, json
+import feedparser
 import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup
 from hashlib import md5
 
-import os.path
 from os import path
 
 from dbconnector import add
@@ -12,15 +12,15 @@ from preprocessing import is_relevant, cleanhtml, find_feeds, normalize
 
 # 
 def get_content(url):
-    # Crawl and parse meta data of the article from server
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
-    page = opener.open(url)
-
-    soup = BeautifulSoup(page, "lxml")
     content = ''
-
     try:
+        # Crawl and parse meta data of the article from server
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
+        page = opener.open(url)
+
+        soup = BeautifulSoup(page, "lxml")
+
         if 'tuoitre.vn' in url:
             # We get the first element in the array because we are sure that 
             # any article on tuoitre.vn only has one div tag with classname "main-content-body"
@@ -76,8 +76,6 @@ def get_content(url):
             content = ' '.join(new_paras)
 
     except Exception as err:
-        print('Error at:',url)
-        print('Error details:', err)
         write_log(url, err)
         return content
 
@@ -90,7 +88,7 @@ def write_log(url, err):
         f.write(str(url) + '\n' + str(err) + '\n')
 
 # Get unicity by MD5 hash
-def get_id(url):
+def get_digest(url):
     return md5(str(url).encode()).hexdigest()
 
 def crawl(url):
@@ -99,7 +97,6 @@ def crawl(url):
         "articles": []
     }
 
-    # Test with particular RSS feed
     feed = feedparser.parse(url)
 
     for i in range(len(feed.entries)):
@@ -125,11 +122,11 @@ def crawl(url):
         # content_header = cleanhtml(str(raw_content.findAll("h2", {"class": "sapo"})[0]))
 
         # Get id and date of the article
-        id = get_id(url)
+        hash = get_digest(url)
         date = feed.entries[i].published
 
         data['articles'].append({
-            "id": id,
+            "hash": hash,
             "summary": summary,
             "title": title,
             "content": content,
@@ -148,11 +145,11 @@ def get_data_to_csv():
     with open('feeds_url.txt', 'r') as f:
         feeds_url = f.read().split('\n')
     
-    # cnt = 0
     data = None
     with open('crawl_results.csv', 'a+') as f:
         f.write('\n')
         for i in range(len(feeds_url)):
+            print("Crawling from {}".format(feeds_url))
             data = crawl(feeds_url[i])
             if data:
                 # Count number of articles in this RSS feed
@@ -161,7 +158,7 @@ def get_data_to_csv():
                 # Convert and import articles as CSV entries into CSV file 
                 for j in range(n_articles):
                     entry = ','.join([
-                        data['articles'][j]['id'],
+                        data['articles'][j]['hash'],
                         data['articles'][j]['summary'],
                         data['articles'][j]['title'],
                         data['articles'][j]['content'],
@@ -174,8 +171,6 @@ def get_data_to_csv():
                         entry = entry + '\n'
 
                     f.write(entry)
-                    
-                print('Successfully crawl {} articles from {}'.format(n_articles, feeds_url[i]))
 
 # MySQL included
 def get_data_to_db(db):
@@ -186,12 +181,12 @@ def get_data_to_db(db):
     
     data = None
     for i in range(len(feeds_url)):
+        print("Crawling from {}".format(feeds_url[i]))
         data = crawl(feeds_url[i])
         if data:
             # Count number of articles in this RSS feed
             n_articles = len(data['articles'])
             add(db, data, feeds_url[i])        
-            print('Successfully added {} articles from {} to database'.format(n_articles, feeds_url[i]))
 
 def get_feeds_url():
     # List of sites to be ignored due to not containing usable information
@@ -232,7 +227,7 @@ def initialize():
     if not path.exists("crawl_results.csv"):
         # Create a results file with headers
         data_headers = [
-            "id",
+            "hash",
             "summary",
             "title",
             "content",
@@ -270,7 +265,7 @@ if __name__ == '__main__':
 #         {
 #             "rss_url": "",
 #             "articles": [{
-#                 "id": "",
+#                 "hash": "",
 #                 "summary": "",
 #                 "title": "",
 #                 "content": "",
@@ -284,7 +279,7 @@ if __name__ == '__main__':
 # Structure of an article
 # "rss_url": "",
 # "articles": [{
-#     "id": "",
+#     "hash": "",
 #     "summary": "",
 #     "title": "",
 #     "content": "",
