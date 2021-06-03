@@ -18,7 +18,16 @@ mysql> describe covid19;
 +---------+----------+------+-----+---------+-------+
 
 #
-create database covid19
-create table articles(id varchar(32) not null, summary text, title text, content longtext, feed_url text, url text, publish_date varchar(50)) character set utf8mb4 collate utf8mb4_general_ci;
+create database corpus;
+create table articles(id int not null auto_increment, hash varchar(32) not null, summary text, title text, content longtext, feed_url text, url text, publish_date varchar(50), primary key(id)) character set utf8mb4 collate utf8mb4_general_ci;
 create user 'mysql_longnguyen'@'%' identified by 'mysql_longnguyen';
-grant all privileges on covid19.* to 'mysql_longnguyen'@'%';
+grant all privileges on corpus.* to 'mysql_longnguyen'@'%';
+
+# Exporting MySQL database to CSV
+### https://stackoverflow.com/questions/356578/how-to-output-mysql-query-results-in-csv-format
+SELECT *
+FROM articles
+INTO OUTFILE '/var/lib/mysql-files/articles.csv'
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n';
