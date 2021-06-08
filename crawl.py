@@ -103,7 +103,7 @@ def crawl(url):
         # Get a sample article URL
         # Also its title
         url = feed.entries[i].links[0]['href']
-        title = feed.entries[i].title
+        title = cleanhtml(feed.entries[i].title)
         summary = cleanhtml(feed.entries[i].summary)  
 
         content = get_content(url)
