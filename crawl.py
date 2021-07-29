@@ -94,6 +94,16 @@ def get_content(url):
 
             # Concatenate into a document except the two last p elements which contain source and author of the news 
             content = ''.join([str(p) for p in p_tags[:-2]])
+        elif 'baochinhphu.vn' in url:
+            raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
+            #summary : phan chu in dam o dau moi bai
+            content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
+    
+            #content:
+            paras = raw.findAll("p", recursive=False)
+            for i in range(len(paras)-1):
+                content += ''.join([cleanhtml(str(paras[i]))])
+            #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
 
     except Exception as err:
         write_log(url, err)
@@ -218,12 +228,13 @@ def get_feeds_url():
     ]
     # Aggregate all RSS feeds URL from RSS aggregator site
     rss_aggr_urls = [
-        'https://tuoitre.vn/rss.htm',
-        'https://vnexpress.net/rss',
-        'https://thanhnien.vn/rss.html',
-        'http://vietnamnet.vn/vn/rss/',
-        'https://nld.com.vn/rss.htm',
-        'https://ncov.moh.gov.vn/web/guest/rss'
+        # 'https://tuoitre.vn/rss.htm',
+        # 'https://vnexpress.net/rss',
+        # 'https://thanhnien.vn/rss.html',
+        # 'http://vietnamnet.vn/vn/rss/',
+        # 'https://nld.com.vn/rss.htm',
+        # 'https://ncov.moh.gov.vn/web/guest/rss',
+        'https://baochinhphu.vn/Rss/?fbclid=IwAR3k1ZZaRxnA2jwYqp6Q292K1pKyFFKbtY5m86iJ5W5wzavLSonOlEgOe-M'
     ]
     with open('feeds_url.txt', 'a+') as f:
         for url in rss_aggr_urls:

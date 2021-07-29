@@ -89,7 +89,7 @@ def find_feeds(url):
                         try_url = feedparser.parse(href)
                     except Exception as err:
                         continue
-                    feeds.append(base+href)
 
+                    feeds.append(base+href)
     #feeds = validate_feeds(feeds, url)
     return feeds
