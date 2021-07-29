@@ -55,7 +55,6 @@ def find_feeds(url):
     html = bs4(page, "lxml")
 
     feed_urls = html.findAll("link", rel="alternate")
-
     # ...
     if len(feed_urls) > 1:
         for f in feed_urls:
@@ -64,6 +63,10 @@ def find_feeds(url):
                 if "rss" in t or "xml" in t:
                     href = f.get("href",None)
                     if href:
+                        try:
+                            try_url = feedparser.parse(href)
+                        except Exception as err:
+                            continue
                         feeds.append(href)
 
     # ...
@@ -75,10 +78,17 @@ def find_feeds(url):
         if href:   
             if ("xml" in href or "rss" in href or "feed" in href):
                 if ("https" in href or "http" in href):
+                    try:
+                        try_url = feedparser.parse(href)
+                    except Exception as err:
+                        continue
                     feeds.append(href)
-                else:    
+                else:
+                    try:
+                        try_url = feedparser.parse(href)
+                    except Exception as err:
+                        continue
                     feeds.append(base+href)
 
-    feeds = validate_feeds(feeds, url)
-
+    #feeds = validate_feeds(feeds, url)
     return feeds
