@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import re, json
 import feedparser
 import urllib.parse
@@ -24,71 +25,82 @@ def get_content(url):
         if 'tuoitre.vn' in url:
             # We get the first element in the array because we are sure that 
             # any article on tuoitre.vn only has one div tag with classname "main-content-body"
-            # Note that findAll or find_all always return a list 
-            raw = soup.findAll("div", {"id": "main-detail-body"})[0]
+            # Note that find_all or find_all always return a list 
+            raw = soup.find_all("div", {"id": "main-detail-body"})[0]
 
             # Nonetheless, raw main content body still have some noise
             # such as div tag used for images or suggesting a related article.
             # Thus, we need to get rid of those by extracting p tag only
             # because p tag contains merely paragraph of the content that we need.
-            # paras = raw.findAll("p", attrs={"class": None, "style": None})
+            # paras = raw.find_all("p", attrs={"class": None, "style": None})
             paras = raw.findChildren("p", attrs={"style": None}, recursive=False)
 
-            content = ''.join([cleanhtml(str(p)) for p in paras])
+            content = ''.join([str(p) for p in paras])
 
         elif 'vnexpress' in url:
             raw = soup.find_all('article', attrs={"class": "fck_detail"})[0]
             paras = raw.find_all('p', attrs={'class': "Normal", 'style': None, 'id': None})
 
-            content = ' '.join([cleanhtml(str(p)) for p in paras])
+            content = ' '.join([str(p) for p in paras])
 
         elif 'thanhnien.vn' in url:
-            raw = soup.findAll("div", {"id": "abody"})[0]
-            divs = raw.findAll("div", attrs={"class": None, "id": None, "style": None})
+            raw = soup.find_all("div", {"id": "abody"})[0]
+            divs = raw.find_all("div", attrs={"class": None, "id": None, "style": None})
                 
             new_divs = []
             for div in divs:
                 s = str(div)
                 if '<table ' not in s and 'Ảnh: ' not in s:
-                    new_divs.append(cleanhtml(s))
+                    new_divs.append(s)
 
             content = ''.join(new_divs)
 
         elif 'nld.com.vn' in url:
-            raw = soup.findAll("div", {"class": "content-news-detail old-news"})[0]
-            content = ''.join([cleanhtml(str(p)) for p in raw.findAll("p", attrs={"class": None, "style": None})])
+            raw = soup.find_all("div", {"class": "content-news-detail old-news"})[0]
+            content = ''.join([str(p) for p in raw.find_all("p", attrs={"class": None, "style": None})])
             
         elif 'vietnamnet.vn' in url:
-            raw_list = soup.findAll("div", {"id": "ArticleContent"})
+            raw_list = soup.find_all("div", {"id": "ArticleContent"})
             if len(raw_list) <= 0:
-                raw_list = soup.findAll("div", {"id": "Magazine-Acticle"})[0]
+                raw_list = soup.find_all("div", {"id": "Magazine-Acticle"})[0]
 
             raw = raw_list[0]
-            paras = raw.findAll("p", attrs={"class": None, "style": None})
+            paras = raw.find_all("p", attrs={"class": None, "style": None})
             if (len(paras) == 0):
-                paras = raw.findAll("p", attrs={"class": "t-j", "style": None})
+                paras = raw.find_all("p", attrs={"class": "t-j", "style": None})
             
             new_paras = []
             for i in range(len(paras)-1):
-                if len(paras[i].findAll("iframe")) >0:
+                if len(paras[i].find_all("iframe")) > 0:
                     continue
-                new_paras.append(cleanhtml(str(paras[i])))
+                new_paras.append(str(paras[i]))
             content = ' '.join(new_paras)
-        elif 'baochinhphu.vn' in url:
-            raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
-            #summary : phan chu in dam o dau moi bai
-            content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
+            
+        elif 'moh.gov.vn' in url:
+            raw = soup.findAll("div", {"id": "content-detail"})
+            # If the main body content with id called "content-detail" available
+            if len(raw) > 0:
+                raw = raw[0]
+            # Otherwise, we have run into other case in which the main body content has class
+            # named "journal-content-article"
+            else:
+                raw = soup.findAll("div", {"class": "journal-content-article"})[0]
+                 
+            # get list of p elements without any attributes or img element as a child element
+            # ref: https://stackoverflow.com/a/34111473
+            # use encode_contents in bs4 for UTF-8 encoded bytestring
+            # ref: https://stackoverflow.com/a/18602241
+            p_tags = raw.find_all(lambda tag: tag.name == 'p' and (not tag.attrs) and (not "<img" in str(tag.encode_contents)))
 
-            #content:
-            paras = raw.findAll("p", recursive=False)
-            for i in range(len(paras)-1):
-                content += ''.join([cleanhtml(str(paras[i]))])
-            #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
+            # Concatenate into a document except the two last p elements which contain source and author of the news 
+            content = ''.join([str(p) for p in p_tags[:-2]])
 
     except Exception as err:
         write_log(url, err)
         return content
 
+    # Filter out html tags and unwanted encoding characters
+    content = cleanhtml(content)
     content = normalize(content)
 
     return content
@@ -107,14 +119,15 @@ def crawl(url):
         "articles": []
     }
 
+    # Get all available news on the RSS feed
     feed = feedparser.parse(url)
 
     for i in range(len(feed.entries)):
         # Get a sample article URL
         # Also its title
         url = feed.entries[i].links[0]['href']
-        title = feed.entries[i].title
-        summary = cleanhtml(feed.entries[i].summary)  
+        title = normalize(cleanhtml(feed.entries[i].title))
+        summary = normalize(cleanhtml(feed.entries[i].summary))
 
         content = get_content(url)
 
@@ -129,7 +142,7 @@ def crawl(url):
         # # Get content's header (somehow as similar as summary)
         # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
         # # summary field is also content header
-        # content_header = cleanhtml(str(raw_content.findAll("h2", {"class": "sapo"})[0]))
+        # content_header = cleanhtml(str(raw_content.find_all("h2", {"class": "sapo"})[0]))
 
         # Get id and date of the article
         hash = get_digest(url)
@@ -159,7 +172,7 @@ def get_data_to_csv():
     with open('crawl_results.csv', 'a+') as f:
         f.write('\n')
         for i in range(len(feeds_url)):
-            print("Crawling from {}".format(feeds_url))
+            print("Crawling from {}".format(feeds_url[i]))     # ??
             data = crawl(feeds_url[i])
             if data:
                 # Count number of articles in this RSS feed
@@ -205,12 +218,12 @@ def get_feeds_url():
     ]
     # Aggregate all RSS feeds URL from RSS aggregator site
     rss_aggr_urls = [
-        # 'https://tuoitre.vn/rss.htm',
-        # 'https://vnexpress.net/rss',
-        # 'https://thanhnien.vn/rss.html',
-        # 'http://vietnamnet.vn/vn/rss/',
-        # 'https://nld.com.vn/rss.htm',
-        'https://baochinhphu.vn/Rss/?fbclid=IwAR3k1ZZaRxnA2jwYqp6Q292K1pKyFFKbtY5m86iJ5W5wzavLSonOlEgOe-M'
+        'https://tuoitre.vn/rss.htm',
+        'https://vnexpress.net/rss',
+        'https://thanhnien.vn/rss.html',
+        'http://vietnamnet.vn/vn/rss/',
+        'https://nld.com.vn/rss.htm',
+        'https://ncov.moh.gov.vn/web/guest/rss'
     ]
     with open('feeds_url.txt', 'a+') as f:
         for url in rss_aggr_urls:
@@ -256,7 +269,7 @@ def initialize():
 if __name__ == '__main__':
     initialize()
     get_data_to_csv()
-    #get_data_to_db()
+    # get_data_to_db()
 
 
 # Key extracting

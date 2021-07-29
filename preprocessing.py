@@ -1,11 +1,13 @@
 import re
 import requests
 import unicodedata
-
 import feedparser
 import urllib.parse
 
 from bs4 import BeautifulSoup as bs4
+
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 def cleanhtml(raw_html):
     # cleanr = re.compile('<.*?>')
@@ -53,7 +55,6 @@ def find_feeds(url):
     opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
     page = opener.open(url)
     html = bs4(page, "lxml")
-
     feed_urls = html.findAll("link", rel="alternate")
     # ...
     if len(feed_urls) > 1:
