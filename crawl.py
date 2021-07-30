@@ -94,6 +94,16 @@ def get_content(url):
 
             # Concatenate into a document except the two last p elements which contain source and author of the news 
             content = ''.join([str(p) for p in p_tags[:-2]])
+        elif 'baochinhphu.vn' in url:
+            raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
+            #summary : phan chu in dam o dau moi bai
+            content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
+    
+            #content:
+            paras = raw.findAll("p", recursive=False)
+            for i in range(len(paras)-1):
+                content += ''.join([cleanhtml(str(paras[i]))])
+            #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
 
         # elif 'baochinhphu.vn' in url:
         #     try:
