@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import re, json
+import re, json, requests
 import feedparser
 import urllib.parse
 import urllib.request
@@ -9,7 +9,7 @@ from hashlib import md5
 from os import path
 
 from dbconnector import add
-from preprocessing import is_relevant, cleanhtml, find_feeds, normalize
+from preprocessing import is_relevant, cleanhtml, find_feeds, normalize, is_crawlable
 
 # 
 def get_content(url):
@@ -94,23 +94,9 @@ def get_content(url):
 
             # Concatenate into a document except the two last p elements which contain source and author of the news 
             content = ''.join([str(p) for p in p_tags[:-2]])
-        elif 'baochinhphu.vn' in url:
-            raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
-            #summary : phan chu in dam o dau moi bai
-            content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
-    
-            #content:
-            paras = raw.findAll("p", recursive=False)
-            for i in range(len(paras)-1):
-                content += ''.join([cleanhtml(str(paras[i]))])
-            #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
 
         # elif 'baochinhphu.vn' in url:
-        #     try:
-        #         raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
-        #     except Exception as err:
-        #         print(url)
-        #         return content
+        #     raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
         #     #summary : phan chu in dam o dau moi bai
         #     content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
     
@@ -236,29 +222,26 @@ def get_data_to_db(db):
             n_articles = len(data['articles'])
             add(db, data, feeds_url[i])        
 
-# Check if an RSS feed is crawlable
-# some sites might be not likely available to crawl hence causing error 
-def is_crawlable(url):
-    try:
-        feed = feedparser.parse(url)
-    except Exception:
-        return False
-    return True
-
 def get_feeds_url():
     # List of sites to be ignored due to not containing usable information
     blacklist = [
-        'video'
+        'video',
+        # 'us.rd.yahoo.com/my/*http://add.my.yahoo.com/rss?url=http://baochinhphu.vn',
+        # 'client.pluck.com/pluckit/prompt.aspx?a=http://baochinhphu.vn',
+        # 'www.bloglines.com/sub/http://baochinhphu.vn',
+        # 'www.rojo.com/add-subscription?resource=http://baochinhphu.vn',
+        # 'http://www.newsfirerss.com/',
+        # 'http://www.newsgator.com/ngs/subscriber/subext.aspx?url=http://baochinhphu.vn'
     ]
     # Aggregate all RSS feeds URL from RSS aggregator site
     rss_aggr_urls = [
-        # 'https://tuoitre.vn/rss.htm',
-        # 'https://vnexpress.net/rss',
-        # 'https://thanhnien.vn/rss.html',
-        # 'http://vietnamnet.vn/vn/rss/',
-        # 'https://nld.com.vn/rss.htm',
-        # 'https://ncov.moh.gov.vn/web/guest/rss',
-        'https://baochinhphu.vn/Rss/'
+        'https://tuoitre.vn/rss.htm',
+        'https://vnexpress.net/rss',
+        'https://thanhnien.vn/rss.html',
+        'http://vietnamnet.vn/vn/rss/',
+        'https://nld.com.vn/rss.htm',
+        'https://ncov.moh.gov.vn/web/guest/rss',
+        # 'https://baochinhphu.vn/Rss/',
     ]
     with open('feeds_url.txt', 'a+') as f:
         for url in rss_aggr_urls:
@@ -274,13 +257,10 @@ def get_feeds_url():
                     if word in feeds_url[i]:
                         flag = False
                         break
-                
-                # Skip pages if 
-                if not is_crawlable(feeds_url[i]):
-                    continue
 
-                # Stop adding line break at the last element 
+                # If page is not crawlable, skip it 
                 if flag:
+                    # Stop adding line break at the last element 
                     if i != n_feeds-1:
                         new_feeds_url.append(feeds_url[i] + '\n')
                     else:
