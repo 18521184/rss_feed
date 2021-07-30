@@ -95,6 +95,21 @@ def get_content(url):
             # Concatenate into a document except the two last p elements which contain source and author of the news 
             content = ''.join([str(p) for p in p_tags[:-2]])
 
+        # elif 'baochinhphu.vn' in url:
+        #     try:
+        #         raw = soup.findAll("div", {"class": "article-body cmscontents"})[0]
+        #     except Exception as err:
+        #         print(url)
+        #         return content
+        #     #summary : phan chu in dam o dau moi bai
+        #     content = ''.join([cleanhtml(str(raw.findAll("div", {"class": "summary"})[0]))])
+    
+        #     #content:
+        #     paras = raw.findAll("p", recursive=False)
+        #     for i in range(len(paras)-1):
+        #         content += ''.join([cleanhtml(str(paras[i]))])
+        #     #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
+
     except Exception as err:
         write_log(url, err)
         return content
@@ -211,6 +226,15 @@ def get_data_to_db(db):
             n_articles = len(data['articles'])
             add(db, data, feeds_url[i])        
 
+# Check if an RSS feed is crawlable
+# some sites might be not likely available to crawl hence causing error 
+def is_crawlable(url):
+    try:
+        feed = feedparser.parse(url)
+    except Exception:
+        return False
+    return True
+
 def get_feeds_url():
     # List of sites to be ignored due to not containing usable information
     blacklist = [
@@ -218,12 +242,13 @@ def get_feeds_url():
     ]
     # Aggregate all RSS feeds URL from RSS aggregator site
     rss_aggr_urls = [
-        'https://tuoitre.vn/rss.htm',
-        'https://vnexpress.net/rss',
-        'https://thanhnien.vn/rss.html',
-        'http://vietnamnet.vn/vn/rss/',
-        'https://nld.com.vn/rss.htm',
-        'https://ncov.moh.gov.vn/web/guest/rss'
+        # 'https://tuoitre.vn/rss.htm',
+        # 'https://vnexpress.net/rss',
+        # 'https://thanhnien.vn/rss.html',
+        # 'http://vietnamnet.vn/vn/rss/',
+        # 'https://nld.com.vn/rss.htm',
+        # 'https://ncov.moh.gov.vn/web/guest/rss',
+        'https://baochinhphu.vn/Rss/'
     ]
     with open('feeds_url.txt', 'a+') as f:
         for url in rss_aggr_urls:
@@ -233,12 +258,18 @@ def get_feeds_url():
             n_feeds = len(feeds_url)
             # Validate each RSS feed uRL
             for i in range(n_feeds):
-                flag = True
+                flag = True     # For decision to add linebreak
                 # Check if URL containing word in blacklist
                 for word in blacklist:
                     if word in feeds_url[i]:
                         flag = False
-                        break 
+                        break
+                
+                # Skip pages if 
+                if not is_crawlable(feeds_url[i]):
+                    continue
+
+                # Stop adding line break at the last element 
                 if flag:
                     if i != n_feeds-1:
                         new_feeds_url.append(feeds_url[i] + '\n')
