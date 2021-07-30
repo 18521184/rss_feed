@@ -1,4 +1,5 @@
 import re
+from urllib import request
 import requests
 import unicodedata
 import feedparser
@@ -30,6 +31,16 @@ def is_relevant(text):
 
     return False
 
+# Check if an RSS feed is crawlable
+# some sites might be not likely available to crawl hence causing error 
+def is_crawlable(url):
+    try:
+        if requests.get(url, timeout=3.0):
+            return True
+    except Exception:
+        return False
+    return True
+
 # Ref: https://stackoverflow.com/questions/16467479/normalizing-unicode
 # output: text after unicode, normalizing 
 def normalize(text):
@@ -39,13 +50,13 @@ def normalize(text):
 
     return text
 
-# Remove duplicates and validate RSS feed URL from find_feeds
-def validate_feeds(feeds, url):
-    results = set()
-    for feed in feeds:
-        if feed != url and len(url) < len(feed):
-            results.add(feed)
-    return list(results)
+# # Remove duplicates and validate RSS feed URL from find_feeds
+# def validate_feeds(feeds, url):
+#     results = set()
+#     for feed in feeds:
+#         if feed != url and len(url) < len(feed):
+#             results.add(feed)
+#     return list(results)
 
 # Get all RSS feed URL from RSS aggregator site
 def find_feeds(url):
@@ -60,15 +71,10 @@ def find_feeds(url):
     if len(feed_urls) > 1:
         for f in feed_urls:
             t = f.get("type",None)
-            if t:
-                if "rss" in t or "xml" in t:
-                    href = f.get("href",None)
-                    if href:
-                        try:
-                            try_url = feedparser.parse(href)
-                        except Exception as err:
-                            continue
-                        feeds.append(href)
+            if t and (("rss" in t) or ("xml" in t)):
+                href = f.get("href",None)
+                if href and is_crawlable(href):
+                    feeds.append(href)
 
     # ...
     parsed_url = urllib.parse.urlparse(url)
@@ -76,20 +82,16 @@ def find_feeds(url):
     atags = html.findAll("a")
     for a in atags:
         href = a.get("href",None)
-        if href:   
-            if ("xml" in href or "rss" in href or "feed" in href):
-                if ("https" in href or "http" in href):
-                    try:
-                        try_url = feedparser.parse(href)
-                    except Exception as err:
-                        continue
-                    feeds.append(href)
-                else:
-                    try:
-                        try_url = feedparser.parse(href)
-                    except Exception as err:
-                        continue
+        if href and ("xml" in href or "rss" in href or "feed" in href):
+            if ("https" in href or "http" in href) and is_crawlable(href):
+                feeds.append(href)
+            else:
+                feeds.append(base+href)
+    
+    # Remove duplicate
+    feeds = list(set(feeds))
 
-                    feeds.append(base+href)
-    #feeds = validate_feeds(feeds, url)
     return feeds
+
+# Reference
+# feedparser with timeout: https://stackoverflow.com/a/39330232
