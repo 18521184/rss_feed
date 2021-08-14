@@ -105,7 +105,6 @@ def get_content(url):
         #     for i in range(len(paras)-1):
         #         content += ''.join([cleanhtml(str(paras[i]))])
         #     #content += ''.join([cleanhtml(str(p)) for p in raw.findAll("p", recursive=False)])
-
     except Exception as err:
         write_log(url, err)
         return content
@@ -130,48 +129,51 @@ def crawl(url):
         "articles": []
     }
 
-    # Get all available news on the RSS feed
-    feed = feedparser.parse(url)
+    try:
+        # Get all available news on the RSS feed
+        feed = feedparser.parse(url)
 
-    for i in range(len(feed.entries)):
-        # Get a sample article URL
-        # Also its title
-        url = feed.entries[i].links[0]['href']
-        title = normalize(cleanhtml(feed.entries[i].title))
-        summary = normalize(cleanhtml(feed.entries[i].summary))
+        for i in range(len(feed.entries)):
+            # Get a sample article URL
+            # Also its title
+            url = feed.entries[i].links[0]['href']
+            title = normalize(cleanhtml(feed.entries[i].title))
+            summary = normalize(cleanhtml(feed.entries[i].summary))
 
-        content = get_content(url)
+            content = get_content(url)
 
-        # Check if the content is attainable
-        # Also check if the article is relevant to COVID-19
-        # If we use summary and title, it would be faster and less resource consumption
-        # Nonetheless, the summary is not very reliable.
-        if len(content) == 0 or (len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False):
-            # If none match, continue to another aritcle
-            continue
+            # Check if the content is attainable
+            # Also check if the article is relevant to COVID-19
+            # If we use summary and title, it would be faster and less resource consumption
+            # Nonetheless, the summary is not very reliable.
+            if len(content) == 0 or (len(content) != 0 and is_relevant(title)==False and is_relevant(content)==False):
+                # If none match, continue to another aritcle
+                continue
 
-        # # Get content's header (somehow as similar as summary)
-        # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
-        # # summary field is also content header
-        # content_header = cleanhtml(str(raw_content.find_all("h2", {"class": "sapo"})[0]))
+            # # Get content's header (somehow as similar as summary)
+            # # Note that we can convert bs4.element.XXX to string by str() or call .string attribute
+            # # summary field is also content header
+            # content_header = cleanhtml(str(raw_content.find_all("h2", {"class": "sapo"})[0]))
 
-        # Get id and date of the article
-        hash = get_digest(url)
-        date = feed.entries[i].published
+            # Get id and date of the article
+            hash = get_digest(url)
+            date = feed.entries[i].published
 
-        data['articles'].append({
-            "hash": hash,
-            "summary": summary,
-            "title": title,
-            "content": content,
-            "url": url,
-            "publish_date": date
-        })
+            data['articles'].append({
+                "hash": hash,
+                "summary": summary,
+                "title": title,
+                "content": content,
+                "url": url,
+                "publish_date": date
+            })
 
-    if len(data['articles']) > 0:
-        return data
-    else:
-        return None
+        if len(data['articles']) > 0:
+            return data
+            
+    except Exception as err:
+        write_log(url, err)
+    return None
 
 def get_data_to_csv():
     feeds_url = None
