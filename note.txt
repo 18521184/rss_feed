@@ -18,6 +18,7 @@ mysql> describe covid19;
 +---------+----------+------+-----+---------+-------+
 
 # MySQL database initialize 
+## Create datbase with utf-8 charset: https://dba.stackexchange.com/questions/76788/create-a-mysql-database-with-charset-utf-8
 create database corpus;
 use corpus;
 create table articles(id int not null auto_increment, hash varchar(32) not null, summary text, title text, content longtext, feed_url text, url text, publish_date varchar(50), primary key(id)) character set utf8mb4 collate utf8mb4_general_ci;
