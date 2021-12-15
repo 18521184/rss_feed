@@ -25,6 +25,32 @@ create table articles(id int not null auto_increment, hash varchar(32) not null,
 create user 'mysql_longnguyen'@'%' identified by 'mysql_longnguyen';
 grant all privileges on corpus.* to 'mysql_longnguyen'@'%';
 
++--------------+-------------+------+-----+---------+----------------+
+| Field        | Type        | Null | Key | Default | Extra          |
++--------------+-------------+------+-----+---------+----------------+
+| id           | int         | NO   | PRI | NULL    | auto_increment |
+| hash         | varchar(32) | NO   |     | NULL    |                |
+| summary      | text        | YES  |     | NULL    |                |
+| title        | text        | YES  |     | NULL    |                |
+| content      | longtext    | YES  |     | NULL    |                |
+| feed_url     | text        | YES  |     | NULL    |                |
+| url          | text        | YES  |     | NULL    |                |
+| publish_date | varchar(50) | YES  |     | NULL    |                |
++--------------+-------------+------+-----+---------+----------------+
+8 rows in set (0.00 sec)
+
+## Create sentence-level table
+create table sent_articles(id int not null auto_increment, sentence text, doc_id int, primary key(id), foreign key(doc_id) references articles(id) ondelete cascade) character set utf8mb4 collate utf8mb4_unicode_ci;
+
++----------+------+------+-----+---------+----------------+
+| Field    | Type | Null | Key | Default | Extra          |
++----------+------+------+-----+---------+----------------+
+| id       | int  | NO   | PRI | NULL    | auto_increment |
+| sentence | text | YES  |     | NULL    |                |
+| doc_id   | int  | YES  | MUL | NULL    |                |
++----------+------+------+-----+---------+----------------+
+3 rows in set (0.01 sec)
+
 # Exporting MySQL database to CSV
 ### https://stackoverflow.com/questions/356578/how-to-output-mysql-query-results-in-csv-format
 SELECT *
