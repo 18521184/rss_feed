@@ -32,3 +32,7 @@ INTO OUTFILE '/var/lib/mysql-files/articles.csv'
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n';
+
+## Using mysqldump
+mysqldump -u <username> -p<password> <database> > /path/to/file.sql
+
