@@ -40,7 +40,7 @@ grant all privileges on corpus.* to 'mysql_longnguyen'@'%';
 8 rows in set (0.00 sec)
 
 ## Create sentence-level table
-create table sent_articles(id int not null auto_increment, sentence text, doc_id int, primary key(id), foreign key(doc_id) references articles(id) ondelete cascade) character set utf8mb4 collate utf8mb4_unicode_ci;
+create table sent_articles(id int not null auto_increment, sentence text, doc_id int, primary key(id), foreign key(doc_id) references articles(id) on delete cascade) character set utf8mb4 collate utf8mb4_unicode_ci;
 
 +----------+------+------+-----+---------+----------------+
 | Field    | Type | Null | Key | Default | Extra          |
